@@ -1,0 +1,546 @@
+program lacost;
+ 
+ type EntryMode is (NO,PROVEEDOR,PRODUCTO,USUARIO,BODEGA,TEMPERATURA,CANTIDAD);
+
+ g_eEntryMode :EntryMode; 
+ 
+ type ProveedorDatabase is database ("Proveedo")
+    proveedor     : string;
+    nombre    : string;    
+  end database;
+
+ type ProductoDatabase is database ("Producto")
+    idproducto     : string;
+    nombre    : string;
+    categoria :string;    
+  end database;
+ 
+  type datosDatabase is database ("datos")  
+    fecha :datetime;
+    proveedor     : string; 
+    producto:string;    
+    peso    : real; 
+    bodega:string;
+    usuario:string;  
+    idproducto:string;
+    categoria:string; 
+    idproveedor:string;
+    idbodega:string;
+    temperatura:string;    
+    cantidad:integer; 
+  end database;
+  
+ type UsuarioDatabase is database ("Usuario")
+    usuario    : string;
+    nombre    : string;    
+  end database; 
+
+ type bodegaDatabase is database ("bodega")
+    bodega    : string;
+    nombre    : string;    
+  end database; 
+  type ConsecutivoDatabase is database ("Consec")
+    consecutivo     : integer;    
+  end database;
+  
+
+
+ dbproveedor:ProveedorDatabase;
+ dbproducto:ProductoDatabase;
+ dbdatos:DatosDatabase;   
+ dbUsuario:UsuarioDatabase;
+ dbBodega:BodegaDatabase;                      
+ dbConsecutivo:ConsecutivoDatabase;
+ 
+ 
+ idproveedor:string;
+ idproducto:string;                
+ idusuario:string;        
+ idbodega:string;               
+ idproductoingreso:string;
+ numingreso:integer;
+  
+  
+ llaveproveedor:constant integer:=1;
+ llaveproducto:constant integer:=1;
+ llaveusuario:constant integer:=1;   
+ llavebodega:constant integer:=1;
+ llavedatos:constant integer:=7;
+  
+ 
+ g_idproveedor:string;
+ g_nombreproveedor:string; 
+ g_idproducto:string;
+ g_nombreproducto:string;
+ g_categoria:string; 
+ g_idusuario:string;
+ g_nombreUsuario:string;
+ g_idbodega:string;
+ g_nombrebodega:string;
+ fecha:datetime;                 
+ g_peso:real;
+ g_temperatura:string;           
+ g_cantidad:integer;
+ romanaactual:integer;
+ g_total:real; 
+ g_hileratotal:string;     
+ g_romanaactual:integer;
+ portimpresion:integer;   
+ portimpresion2:integer;
+ portdisplay:integer;                    
+
+procedure cargarconsecutivo;
+ begin
+ dbConsecutivo.GetFirst;
+ numingreso:=dbconsecutivo.consecutivo;
+ end; 
+function ObtenerConsecutivo:integer; 
+ numingreso:integer;
+ begin
+ dbConsecutivo.GetFirst;
+ numingreso:=dbconsecutivo.consecutivo;
+ numingreso:=numingreso+1;
+ dbconsecutivo.consecutivo:=numingreso;
+ dbconsecutivo.Update;
+ return numingreso;
+ end;                                      
+                 
+                                       
+function llenarceros(parametro:real;tamano:integer):string;
+resultado:string;  
+count:integer;     
+tamano2:integer;
+valor:integer;
+begin
+valor:=parametro*100;
+if valor<10 then
+tamano:=tamano-1;
+tamano2:=1;
+end if;         
+if valor>=10 and valor <100 then
+tamano:=tamano-2;
+tamano2:=2;
+end if;       
+if valor>=100 and valor <1000 then
+tamano:=tamano-3;
+tamano2:=3;
+end if;       
+if valor>=1000 and valor <10000 then
+tamano:=tamano-4;
+tamano2:=4;
+end if;
+if valor>=10000 and valor <100000 then
+tamano:=tamano-5;
+tamano2:=5;
+end if;
+                      
+resultado:="";                      
+for count:=1 to tamano loop
+resultado:=resultado+"0";
+end loop;
+resultado:=resultado+IntegerToString(valor,tamano2);
+return resultado;
+end;
+  
+ procedure settotal(numtotal:real);
+ begin
+ g_total:=numtotal;
+ g_hileratotal:=RealToString(numtotal,4,2);
+ SetLabelText(7,g_hileratotal);  
+ SetLabelText(28,g_hileratotal);  
+ 
+ end;
+
+ 
+ procedure sumtotal(numtotal:real);
+ total:real;
+ begin 
+ total:=g_total+numtotal;
+ settotal(total);
+ end;
+ 
+ procedure validarproveedor;     
+ 
+ begin                       
+ 
+   dbProveedor.Proveedor := idproveedor;
+
+        
+
+        if dbproveedor.FindFirst(llaveproveedor) = SysOk then
+          g_idproveedor:=idproveedor;
+          g_nombreproveedor:=dbproveedor.nombre;
+          numingreso:=ObtenerConsecutivo;
+          
+        else
+          g_idproveedor:="";
+          g_nombreproveedor:="";
+          DisplayStatus("Proveedor no Encontrado");
+        end if;
+     
+     SetLabelText(2,g_idproveedor+"-"+g_nombreproveedor);
+     SetLabelText(23,g_idproveedor+"-"+g_nombreproveedor);
+     settotal(0);     
+     dbdatos.Clear;
+     
+ end;
+ 
+ 
+                    
+ procedure validarproducto;
+ begin
+   dbProducto.idproducto := idproducto;
+
+        
+
+        if dbproducto.FindFirst(llaveproducto) = SysOk then
+          g_idproducto:=idproducto;
+          g_nombreproducto:=dbproducto.nombre; 
+          g_categoria:=dbproducto.categoria; 
+          g_cantidad:=0;
+          SetLabelText(19,IntegerToString(g_cantidad,5));
+          
+        else
+          g_idproducto:="";
+          g_nombreproducto:="";
+          DisplayStatus("Producto no Encontrado");
+        end if;
+     
+     SetLabelText(5,g_idproducto+"-"+g_nombreproducto); 
+     SetLabelText(24,g_idproducto+"-"+g_nombreproducto);
+     settotal(0);
+ end;                        
+     
+procedure validarusuario;
+ begin
+   dbusuario.usuario := idusuario;
+        if dbusuario.FindFirst(llaveusuario) = SysOk then
+          g_idusuario:=idusuario;
+          g_nombreusuario:=dbusuario.nombre;
+        else
+          g_idusuario:="";
+          g_nombreusuario:="";
+          DisplayStatus("Usuario no Encontrado");
+        end if;
+     
+     SetLabelText(9,g_idusuario+"-"+g_nombreusuario);
+     
+     SetLabelText(25,g_idusuario+"-"+g_nombreusuario);
+       settotal(0);
+ end;     
+procedure validarbodega;
+ begin
+   dbBodega.Bodega := idBodega;
+        if dbBodega.FindFirst(llaveBodega) = SysOk then
+          g_idbodega:=idbodega;
+          g_nombrebodega:=dbbodega.nombre;
+        else
+          g_idbodega:="";
+          g_nombrebodega:="";
+          DisplayStatus("Bodega no Encontrado");
+        end if;
+     
+     SetLabelText(13,g_idbodega+"-"+g_nombrebodega);
+      SetLabelText(26,g_idbodega+"-"+g_nombrebodega); 
+     
+       settotal(0);
+ end;     
+                         
+                         
+ handler UserEntry; 
+    strEntry : string := "";
+    rValue : real;
+  begin
+    -- We need to find out which key caused the this event.
+    if EventKey = EnterKey then 
+      strEntry := GetEntry; 
+      ClosePrompt;
+      if (Len(strEntry) > 0)  then
+        -- Convert the user entry into a real value.
+      
+        if g_eEntryMode = PROVEEDOR then
+          idproveedor:=strEntry;
+          validarproveedor;
+
+        elsif g_eEntryMode = PRODUCTO then      
+          idproducto:=strEntry;  
+          validarproducto; 
+        elsif g_eEntryMode = USUARIO then
+            idusuario:=strEntry;
+          validarUsuario; 
+          elsif g_eEntryMode = BODEGA then
+            idbodega:=strEntry;
+          validarBodega;
+          elsif g_eEntryMode = TEMPERATURA then
+            g_temperatura:=strEntry;
+            SetLabelText(15,g_temperatura);
+            SetLabelText(32,g_temperatura);
+          elsif g_eEntryMode = CANTIDAD then
+            g_cantidad:=StringToInteger(strEntry);
+            SetLabelText(17,IntegerToString(g_cantidad,4));    
+            SetLabelText(30,IntegerToString(g_cantidad,4));    
+            
+        else
+          DisplayStatus("Invalid Entry Mode!");
+        end if;  
+      else
+        DisplayStatus("Invalid Entry!");  
+      end if;                   
+    else
+      ClosePrompt; 
+      DisplayStatus("Entry Cancelled!");
+
+    end if;  
+    g_eEntryMode := NO;
+  end;  
+
+
+handler user1keypressed;
+begin           
+if PromptUser("Proveedor: ") = SysOk then
+      DisplayStatus("Ingresar Id Proveedor");
+    end if;
+    g_eEntryMode := PROVEEDOR;
+end;
+
+handler user2keypressed;
+begin                       
+if PromptUser("Producto: ") = SysOk then
+      DisplayStatus("Ingresar Id de Producto");
+    end if;
+    g_eEntryMode := Producto;
+end;
+
+handler user5keypressed;
+begin                       
+if PromptUser("Usuario: ") = SysOk then
+      DisplayStatus("Ingresar Id de Usuario");
+    end if;
+    g_eEntryMode := USUARIO;
+end;
+
+handler user6keypressed;
+begin                       
+if PromptUser("Almacen: ") = SysOk then
+      DisplayStatus("Ingresar Id de Almacen");
+    end if;
+    g_eEntryMode := BODEGA;
+end;
+
+handler user9keypressed;
+begin                       
+if PromptUser("Cantidad: ") = SysOk then
+      DisplayStatus("Ingresar Cantidad");
+    end if;
+    g_eEntryMode := CANTIDAD;
+end;
+
+procedure ImprimirEtiqueta;  
+tara:real;   
+pesobruto:real;
+begin           
+GetTare(romanaactual,Primary,tara);
+
+WriteLn(portimpresion,"N");
+WriteLn(portimpresion,"A10,0,0,3,1,1,N,"+Chr$(34)+"Fecha : "+Date$(fecha)+" "+Time$(fecha)+Chr$(34));
+WriteLn(portimpresion,"A10,35,0,3,1,1,N,"+Chr$(34)+"Prov : "+g_nombreproveedor+Chr$(34));
+WriteLn(portimpresion,"A10,70,0,3,1,1,N,"+Chr$(34)+"Codigo Proveedor : "+g_idproveedor+Chr$(34));
+WriteLn(portimpresion,"A10,105,0,3,1,1,N,"+Chr$(34)+"Prod : "+g_nombreproducto+Chr$(34));
+WriteLn(portimpresion,"A10,140,0,3,1,1,N,"+Chr$(34)+"Codigo Producto : "+g_idproducto+Chr$(34));
+WriteLn(portimpresion,"A10,175,0,3,1,1,N,"+Chr$(34)+"Almacen : "+g_nombrebodega+Chr$(34));
+WriteLn(portimpresion,"A10,210,0,3,1,1,N,"+Chr$(34)+"Cantidad : "+IntegerToString(g_cantidad,5)+Chr$(34));  
+pesobruto:=g_peso+tara;
+WriteLn(portimpresion,"A10,250,0,3,1,2,N,"+Chr$(34)+"Tara: "+RealToString(tara,5,2)+" Peso: "+RealToString(pesobruto,5,2)+Chr$(34));
+WriteLn(portimpresion,"A10,305,0,3,1,2,N,"+Chr$(34)+"Peso Neto : "+RealToString(g_peso,5,2)+Chr$(34));
+WriteLn(portimpresion,"B10,370,0,E30,3,1,90,B,"+Chr$(34)+"020"+g_idproducto+llenarceros(g_peso,5)+Chr$(34));
+WriteLn(portimpresion,"P1");
+
+-- WriteLn(portimpresion,"N");
+-- WriteLn(portimpresion,"A30,0,0,4,1,1,N,"+Chr$(34)+"Fecha : "+Date$(fecha)+" "+Time$(fecha)+Chr$(34));
+-- WriteLn(portimpresion,"A30,40,0,4,1,1,N,"+Chr$(34)+"Prov : "+g_nombreproveedor+Chr$(34));
+-- WriteLn(portimpresion,"A30,120,0,4,1,1,N,"+Chr$(34)+"Prod : "+g_nombreproducto+Chr$(34));
+-- WriteLn(portimpresion,"A30,80,0,4,1,1,N,"+Chr$(34)+"Codigo Proveedor : "+g_idproveedor+Chr$(34));
+-- WriteLn(portimpresion,"A30,160,0,4,1,1,N,"+Chr$(34)+"Codigo Producto : "+g_idproducto+Chr$(34));
+-- WriteLn(portimpresion,"A30,200,0,4,1,1,N,"+Chr$(34)+"Almacen : "+g_nombrebodega+Chr$(34));
+-- WriteLn(portimpresion,"A30,240,0,4,1,1,N,"+Chr$(34)+"Cantidad : "+IntegerToString(g_cantidad,5)+Chr$(34));  
+-- pesobruto:=g_peso+tara;
+-- WriteLn(portimpresion,"A30,280,0,4,1,2,N,"+Chr$(34)+"Tara: "+RealToString(tara,5,2)+" Peso: "+RealToString(pesobruto,5,2)+Chr$(34));
+-- WriteLn(portimpresion,"A30,340,0,4,1,2,N,"+Chr$(34)+"Peso Neto : "+RealToString(g_peso,5,2)+Chr$(34));
+-- WriteLn(portimpresion,"B07,400,0,E30,4,1,100,B,"+Chr$(34)+"020"+g_idproducto+llenarceros(g_peso,5)+Chr$(34));
+-- WriteLn(portimpresion,"P1");
+
+end;
+
+handler user7keypressed;
+begin
+imprimirEtiqueta;
+end;
+
+handler user3keypressed;
+begin
+if PromptUser("Temperatura: ") = SysOk then
+      DisplayStatus("Ingresar Temperatura");
+    end if; 
+     
+    g_eEntryMode := TEMPERATURA;
+end;
+                   
+procedure GuardarPeso;
+peso:real;                   
+begin 
+
+  
+ if g_idproveedor<>""  then                 
+    if g_idproducto<>""  then
+    if g_idbodega <>""  then
+                     
+      GetNet(romanaactual,Primary,peso);
+      g_peso:=peso;
+      dbdatos.idproducto:=g_idproducto; 
+      if dbdatos.FindFirst(llavedatos) = SysOk then
+      dbdatos.peso:=dbdatos.peso+peso;
+      dbdatos.cantidad:=dbdatos.cantidad+g_cantidad;
+      dbdatos.Update;
+      sumtotal(peso);        
+      else 
+      fecha:=SystemTime;          
+      dbdatos.fecha:=fecha;
+      dbdatos.proveedor:=g_nombreproveedor;
+      dbdatos.peso:=peso;
+      dbdatos.bodega:=g_nombrebodega;
+      dbdatos.usuario:=g_nombreusuario;
+      dbdatos.idproducto:=g_idproducto;
+      dbdatos.producto:=g_nombreproducto;
+      dbdatos.categoria:=g_categoria;    
+      dbdatos.idproveedor:= g_idproveedor;
+      dbdatos.idbodega:=g_idbodega;    
+      dbdatos.temperatura:=g_temperatura;        
+      dbdatos.cantidad:=g_cantidad;
+      
+      dbdatos.Add;
+      sumtotal(peso);      
+      end if; 
+      ImprimirEtiqueta;
+      
+      DisplayStatus(g_nombreproducto+": "+RealToString(peso,6,2));  
+    else
+     DisplayStatus("Falta Ingresar Bodega");
+    end if;   
+    else
+     DisplayStatus("Falta Ingresar Producto"); 
+     end if;
+ else
+ DisplayStatus("Falta Ingresar proveedor");
+ end if;
+
+end;       
+       
+handler User8keypressed;
+begin
+Guardarpeso;
+end;       
+handler PrintKeyPressed;  
+begin
+guardarpeso;
+end;
+
+procedure EnviarEthernet;  
+idproducto:string;
+nombreproducto:string; 
+sysReturnVal : SysCode;
+totalpeso:real;
+fechafin:datetime;
+pesotexto:string;
+begin               
+WriteLn(portimpresion2,"<recepcion>");
+sysReturnVal:=dbdatos.GetFirst;
+ while (sysReturnVal = SysOk) 
+    loop
+      WriteLn(portimpresion2,"<carga><ConsecutivoRecibo>"+IntegerToString(numingreso,7)+"</ConsecutivoRecibo>"); 
+      WriteLn(portimpresion2,"<idproveedor>"+dbdatos.idproveedor+"</idproveedor>");                          
+      WriteLn(portimpresion2,"<proveedor>"+dbdatos.proveedor+"</proveedor>");                          
+      
+      WriteLn(portimpresion2,"<fecha>"+Date$(dbdatos.fecha)+"</fecha>"); 
+      WriteLn(portimpresion2,"<hora>"+Time$(dbdatos.fecha)+"</hora>");
+      WriteLn(portimpresion2,"<producto>");
+      WriteLn(portimpresion2,"<idproducto>"+dbdatos.idproducto+"</idproducto><nombreproducto>"+dbdatos.producto+"</nombreproducto><categoria>"+dbdatos.categoria+"</categoria>");
+      WriteLn(portimpresion2,"</producto>");
+      WriteLn(portimpresion2,"<bodega>");
+      WriteLn(portimpresion2,"<idbodega>"+dbdatos.idbodega+"</idbodega><nombrebodega>"+dbdatos.bodega+"</nombrebodega>");
+      WriteLn(portimpresion2,"</bodega>");
+      WriteLn(portimpresion2,"<temperatura>"+dbdatos.temperatura+"</temperatura>");         
+      WriteLn(portimpresion2,"<cantidad>"+IntegerToString(dbdatos.cantidad,4) +"</cantidad>");
+      pesotexto:=RealToString(dbdatos.peso,5,1);       
+      WriteLn(portimpresion2,"<Peso>"+pesotexto+" kg</Peso>");         
+       WriteLn(portimpresion2,"<usuario>"+dbdatos.usuario+"</usuario></carga>");
+      sysReturnVal := dbdatos.GetNext;
+    end loop;   
+WriteLn(portimpresion2,"</recepcion>");          
+WriteLn(portimpresion2,"<<---END--->>");  
+
+
+end;
+
+    
+handler user4keypressed;
+begin
+EnviarEthernet;
+DisplayStatus("Informacion Enviada.");
+end;    
+       
+handler user10keypressed;
+
+begin  
+   romanaactual:=CurrentScale; 
+   if romanaactual=1 then   
+          SelectScreen(2);
+          romanaactual:=2;          
+   elsif               
+    romanaactual=2 then   
+          SelectScreen(1);
+          romanaactual:=1;          
+   end if;               
+
+    if SelectScale(romanaactual)=SysOk then 
+    DisplayStatus("Cambio a Romana-"+IntegerToString(romanaactual,2)+" realizado");
+    else
+    DisplayStatus(" Error Cambiando Romana ");
+    end if;
+end;
+
+handler timer1trip;
+peso:real;
+begin 
+GetNet(1,Primary,peso);
+WriteLn(portdisplay,"US,GS,"+RealToString(peso,8,2)+"KG");
+end;
+
+begin
+
+portimpresion2:=1;
+portimpresion:=3;
+portdisplay:=4;
+SetMode(1,NetMode);
+SetMode(2,NetMode);
+SetTimerMode(1,TimerContinuous);
+SetTimer(1,25);
+StartTimer(1);
+SetLabelText(2,"");
+SetLabelText(5,"");
+SetLabelText(13,"");
+SetLabelText(9,"");
+SetLabelText(7,"");
+SetLabelText(17,"");
+SetLabelText(15,"");
+
+SetLabelText(23,"");
+SetLabelText(24,"");
+SetLabelText(25,"");
+SetLabelText(26,"");
+SetLabelText(28,"");
+SetLabelText(30,"");
+SetLabelText(32,"");
+SelectScreen(1);
+romanaactual:=1;
+SelectScale(romanaactual);
+end lacost;
